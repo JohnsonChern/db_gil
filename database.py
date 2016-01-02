@@ -80,6 +80,9 @@ def delete_record(patient_id):
         with curs:
             curs.execute(DELETE, (patient_id,))
 
+    conn.commit()
+    conn.close()
+
 
 def add_policy(patient_id, added_policy, time):
     """
@@ -88,8 +91,15 @@ def add_policy(patient_id, added_policy, time):
     :param patient_id:      the patient id
     :param added_policy:    the additional privacy policy that will be added
     :param time:            the time that the record is modified
-    :return:                return 1 if policy added successfully
+    :return:                return 1  if policy added successfully
+                            return -1 if type of added_policy is incorrect
     """
+
+    if type(added_policy) is str:
+        added_policy = json.loads(added_policy)
+    elif type(added_policy) is not list or dict:
+        return -1
+
     conn = psycopg2.connect(privacy_server)
 
     with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
@@ -98,15 +108,18 @@ def add_policy(patient_id, added_policy, time):
             result = curs.fetchone()
 
     if result is not None:
-        merged_policy = merge(result['policy'], added_policy)
+        merged_policy = merge(result[1], added_policy)
+
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
             with curs:
-                curs.execute(UPDATE, (merged_policy, time, patient_id))
+                curs.execute(UPDATE, (json.dumps(merged_policy), time, patient_id))
     else:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
             with curs:
                 curs.execute(INSERT, (patient_id, added_policy, time))
 
+    conn.commit()
+    conn.close()
     return 1
 
 
