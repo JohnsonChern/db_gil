@@ -135,6 +135,6 @@ def select_policy(patient_id):
             result = curs.fetchone()
 
     if result is not None:
-        return result
+        return result[1]
     else:
         return 0
