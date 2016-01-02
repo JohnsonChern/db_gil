@@ -9,7 +9,7 @@ privacy_server = "dbname=%s user=%s" % (dbname, dbuser)
 
 INSERT = "INSERT INTO privacy_server (patient_id, policy, last_modified) VALUES (%s, %s, %s)"
 DELETE = "DELETE FROM privacy_server WHERE patient_id = %s"
-SELECT = "SELECT FROM privacy_server WHERE patient_id = %s"
+SELECT = "SELECT * FROM privacy_server WHERE patient_id = %s"
 UPDATE = "UPDATE privacy_server set policy=%s, last_modified=%s WHERE id=%s"
 
 
