@@ -47,8 +47,4 @@ def merger(base, head):
 		elif type(head[key]) is dict:
 			result[key] = merger(result[key], head[key])
 
-	temp = json.dumps(result, sort_keys=True)
-	print temp
-	result = json.loads(temp)
-	print result
 	return result
