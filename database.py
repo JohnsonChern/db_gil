@@ -1,9 +1,14 @@
 import psycopg2
 import psycopg2.extras
 import json
-from jsonmerge import merge
+import mymerge as merge
 
 from config_db import dbuser, dbname
+
+ok                  =  1
+type_error          = -1
+already_existed     =  0
+not_existed         = -2
 
 privacy_server = "dbname=%s user=%s" % (dbname, dbuser)
 
@@ -18,8 +23,8 @@ def search_record(patient_id):
     """
     This function search for the record of the given patient.
     :param patient_id:  the patient's id
-    :return:            return 1 if the record exists
-                        return 0 if the record doesn't exist
+    :return:            return 'ok'             : the record exists
+                        return 'not_existed'    : the record doesn't exist
     """
     conn = psycopg2.connect(privacy_server)
 
@@ -29,18 +34,18 @@ def search_record(patient_id):
             result = curs.fetchone()
 
     if result is not None:
-        return 1
+        return ok
     else:
-        return 0
+        return not_existed
 
 def insert_record(patient_id, policy, time):
     """
     :param patient_id:  patient id that identifies the patient
     :param policy:      patient's privacy policy
     :param time:        time that the policy is inserted
-    :return:            return 1  if inserted successfully
-                        return 0  if the patient's policy already exists
-                        return -1 if the type of parameter is wrong
+    :return:            return 'ok'                 : inserted successfully
+                        return 'already_existed'    : the patient's policy already exists
+                        return 'type_error'         : the type of parameter is wrong
     """
     conn = psycopg2.connect(privacy_server)
 
@@ -52,20 +57,20 @@ def insert_record(patient_id, policy, time):
     if result is None:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
             with curs:
-                if type(policy) == dict or list:
+                if type(policy) in [dict, list]:
                     dumped_policy = json.dumps(policy, sort_keys=True)
-                elif type(policy) == str:
+                elif type(policy) is str:
                     dumped_policy = json.dumps(json.loads(policy))
                 else:
                     conn.close()
-                    return -1
+                    return type_error
                 curs.execute(INSERT, (patient_id, dumped_policy, time))
     else:
-        return 0
+        return already_existed
 
     conn.commit()
     conn.close()
-    return 1
+    return ok
 
 
 def delete_record(patient_id):
@@ -91,14 +96,14 @@ def add_policy(patient_id, added_policy, time):
     :param patient_id:      the patient id
     :param added_policy:    the additional privacy policy that will be added
     :param time:            the time that the record is modified
-    :return:                return 1  if policy added successfully
-                            return -1 if type of added_policy is incorrect
+    :return:                return 'ok'         : policy added successfully
+                            return 'type_error' : type of added_policy is incorrect
     """
 
     if type(added_policy) is str:
         added_policy = json.loads(added_policy)
-    elif type(added_policy) is not list or dict:
-        return -1
+    elif type(added_policy) not in [list, dict]:
+        return type_error
 
     conn = psycopg2.connect(privacy_server)
 
@@ -108,7 +113,7 @@ def add_policy(patient_id, added_policy, time):
             result = curs.fetchone()
 
     if result is not None:
-        merged_policy = merge(result[1], added_policy)
+        merged_policy = merge.merger(result[1], added_policy)
 
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as curs:
             with curs:
@@ -120,7 +125,7 @@ def add_policy(patient_id, added_policy, time):
 
     conn.commit()
     conn.close()
-    return 1
+    return ok
 
 
 """
@@ -137,8 +142,8 @@ def select_policy(patient_id):
     """
     This function select the record of the assumed patient and return the patient's privacy record
     :param patient_id:  the patient id
-    :return:            return the privacy policy
-                        return 0 if the patient is not in the database
+    :return:            return the privacy policy if select successfully
+                        return 'not_existed' if the patient is not in the database
     """
     conn = psycopg2.connect(privacy_server)
 
@@ -150,4 +155,4 @@ def select_policy(patient_id):
     if result is not None:
         return result[1]
     else:
-        return 0
+        return not_existed
